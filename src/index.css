@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Noto Sans Bengali', sans-serif;
+    @apply bg-gray-50 text-gray-900 antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    @apply scrollbar-hide;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+
+@layer base {
+  /* Dark mode overrides */
+  .dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+  .dark .bg-white {
+    @apply bg-gray-800;
+  }
+  .dark .bg-gray-50 {
+    @apply bg-gray-900;
+  }
+  .dark .bg-gray-100 {
+    @apply bg-gray-700;
+  }
+  .dark .text-gray-900 {
+    @apply text-gray-100;
+  }
+  .dark .text-gray-700 {
+    @apply text-gray-300;
+  }
+  .dark .text-gray-500 {
+    @apply text-gray-400;
+  }
+  .dark .border-gray-200 {
+    @apply border-gray-700;
+  }
+  .dark .border-gray-100 {
+    @apply border-gray-800;
+  }
+}

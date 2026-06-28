@@ -1,0 +1,38 @@
+{
+  "name": "hyperlocal-bazaar",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-router-dom": "^6.24.0",
+    "firebase": "^10.12.0",
+    "lucide-react": "^0.400.0",
+    "browser-image-compression": "^2.0.2",
+    "geofire-common": "^6.0.0",
+    "react-leaflet": "^4.2.1",
+    "leaflet": "^1.9.4",
+    "date-fns": "^3.6.0",
+    "react-hot-toast": "^2.4.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.0",
+    "vite-plugin-pwa": "^0.20.0",
+    "vitest": "^1.6.0",
+    "@testing-library/react": "^16.0.0",
+    "jsdom": "^24.1.0"
+  }
+}
