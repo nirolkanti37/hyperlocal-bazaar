@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [
     react(),
+    base: '/hyperlocal-bazaar/',
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
