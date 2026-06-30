@@ -13,11 +13,20 @@ const LoginPage = () => {
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
-  const recaptchaRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/';
+
+  // Cleanup recaptcha on unmount
+  useEffect(() => {
+    return () => {
+      if (window._recaptchaVerifier) {
+        try { window._recaptchaVerifier.clear(); } catch (_) {}
+        window._recaptchaVerifier = null;
+      }
+    };
+  }, []);
 
   // Countdown timer for OTP resend
   useEffect(() => {
@@ -29,15 +38,9 @@ const LoginPage = () => {
   }, [step, countdown]);
 
   const formatPhoneNumber = (phone) => {
-    // Remove non-digits
     const digits = phone.replace(/\D/g, '');
-    // Add +880 if starts with 01
-    if (digits.startsWith('01') && digits.length === 11) {
-      return `+88${digits}`;
-    }
-    if (digits.startsWith('8801') && digits.length === 13) {
-      return `+${digits}`;
-    }
+    if (digits.startsWith('01') && digits.length === 11) return `+88${digits}`;
+    if (digits.startsWith('8801') && digits.length === 13) return `+${digits}`;
     return digits.length === 11 ? `+88${digits}` : digits;
   };
 
@@ -46,13 +49,13 @@ const LoginPage = () => {
 
     const digits = phoneNumber.replace(/\D/g, '');
     if (digits.length !== 11 || !digits.startsWith('01')) {
-      toast.error('সঠিক ১১ ডিজিটের ফোন নম্বর দিন');
+      toast.error('সঠিক ১১ ডিজিটের ফোন নম্বর দিন (01XXXXXXXXX)');
       return;
     }
 
     setLoading(true);
-
     try {
+      // Always create fresh verifier (setupRecaptcha clears old one internally)
       const verifier = setupRecaptcha('recaptcha-container');
       const formattedPhone = formatPhoneNumber(phoneNumber);
       const result = await sendOTP(formattedPhone, verifier);
@@ -61,7 +64,8 @@ const LoginPage = () => {
         setConfirmationResult(result.confirmation);
         setStep('otp');
         setCountdown(60);
-        toast.success('OTP পাঠানো হয়েছে!');
+        setOtp('');
+        toast.success(`${formattedPhone} নম্বরে OTP পাঠানো হয়েছে`);
       } else {
         toast.error(result.error || 'OTP পাঠাতে ব্যর্থ');
       }
@@ -81,7 +85,6 @@ const LoginPage = () => {
     }
 
     setLoading(true);
-
     try {
       const result = await verifyOTP(confirmationResult, otp);
 
@@ -95,33 +98,48 @@ const LoginPage = () => {
         toast.error(result.error || 'OTP ভুল!');
       }
     } catch (error) {
-      toast.error('ভেরিফিকেশন ব্যর্থ');
+      toast.error('ভেরিফিকেশন ব্যর্থ, আবার চেষ্টা করুন');
     } finally {
       setLoading(false);
     }
   };
 
   const handleResendOTP = async () => {
-    if (countdown > 0) return;
+    if (countdown > 0 || loading) return;
 
     setLoading(true);
-    const verifier = setupRecaptcha('recaptcha-container');
-    const formattedPhone = formatPhoneNumber(phoneNumber);
-    const result = await sendOTP(formattedPhone, verifier);
+    try {
+      const verifier = setupRecaptcha('recaptcha-container');
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      const result = await sendOTP(formattedPhone, verifier);
 
-    if (result.success) {
-      setConfirmationResult(result.confirmation);
-      setCountdown(60);
-      toast.success('OTP আবার পাঠানো হয়েছে');
-    } else {
-      toast.error('OTP পাঠাতে ব্যর্থ');
+      if (result.success) {
+        setConfirmationResult(result.confirmation);
+        setCountdown(60);
+        setOtp('');
+        toast.success('OTP আবার পাঠানো হয়েছে');
+      } else {
+        toast.error(result.error || 'OTP পাঠাতে ব্যর্থ');
+      }
+    } catch (error) {
+      toast.error('কিছু সমস্যা হয়েছে, আবার চেষ্টা করুন');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handleChangePhone = () => {
+    if (window._recaptchaVerifier) {
+      try { window._recaptchaVerifier.clear(); } catch (_) {}
+      window._recaptchaVerifier = null;
+    }
+    setStep('phone');
+    setOtp('');
+    setConfirmationResult(null);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white flex flex-col">
-      {/* Header */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           {/* Logo */}
@@ -137,21 +155,15 @@ const LoginPage = () => {
           <div className="flex items-center justify-center gap-2 mb-8">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
               step === 'phone' ? 'bg-primary-500 text-white' : 'bg-primary-100 text-primary-600'
-            }`}>
-              1
-            </div>
+            }`}>1</div>
             <div className={`w-12 h-0.5 ${step !== 'phone' ? 'bg-primary-500' : 'bg-gray-200'}`} />
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
               step === 'otp' ? 'bg-primary-500 text-white' : step === 'success' ? 'bg-primary-100 text-primary-600' : 'bg-gray-200 text-gray-400'
-            }`}>
-              2
-            </div>
+            }`}>2</div>
             <div className={`w-12 h-0.5 ${step === 'success' ? 'bg-primary-500' : 'bg-gray-200'}`} />
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
               step === 'success' ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-400'
-            }`}>
-              3
-            </div>
+            }`}>3</div>
           </div>
 
           {/* Phone Step */}
@@ -165,17 +177,17 @@ const LoginPage = () => {
                   type="tel"
                   placeholder="01XXXXXXXXX"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 11))}
                   leftIcon={<Phone size={18} className="text-gray-400" />}
                   maxLength={11}
-                  helperText="১১ ডিজিটের ফোন নম্বর দিন"
+                  helperText="১১ ডিজিটের ফোন নম্বর দিন (যেমন: 01712345678)"
                 />
               </div>
 
-              <Button 
+              <Button
                 type="submit"
-                variant="primary" 
-                size="lg" 
+                variant="primary"
+                size="lg"
                 className="w-full"
                 loading={loading}
                 rightIcon={<ArrowRight size={18} />}
@@ -191,14 +203,15 @@ const LoginPage = () => {
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <h2 className="text-lg font-bold text-gray-900 mb-1">OTP ভেরিফাই করুন</h2>
                 <p className="text-sm text-gray-500 mb-4">
-                  {formatPhoneNumber(phoneNumber)} নম্বরে ৬ ডিজিটের কোড পাঠানো হয়েছে
+                  <span className="font-medium text-gray-700">{formatPhoneNumber(phoneNumber)}</span> নম্বরে ৬ ডিজিটের কোড পাঠানো হয়েছে
                 </p>
 
                 <Input
-                  type="number"
-                  placeholder="XXXXXX"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="_ _ _ _ _ _"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.slice(0, 6))}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   leftIcon={<Shield size={18} className="text-gray-400" />}
                   maxLength={6}
                   className="text-center text-2xl tracking-widest font-mono"
@@ -207,13 +220,14 @@ const LoginPage = () => {
                 <div className="mt-4 text-center">
                   {countdown > 0 ? (
                     <p className="text-sm text-gray-500">
-                      {countdown} সেকেন্ড পর আবার পাঠান
+                      আবার পাঠাতে অপেক্ষা করুন ({countdown}s)
                     </p>
                   ) : (
-                    <button 
+                    <button
                       type="button"
                       onClick={handleResendOTP}
-                      className="text-sm text-primary-600 font-medium hover:underline"
+                      disabled={loading}
+                      className="text-sm text-primary-600 font-medium hover:underline disabled:opacity-50"
                     >
                       OTP আবার পাঠান
                     </button>
@@ -221,22 +235,22 @@ const LoginPage = () => {
                 </div>
               </div>
 
-              <Button 
+              <Button
                 type="submit"
-                variant="primary" 
-                size="lg" 
+                variant="primary"
+                size="lg"
                 className="w-full"
                 loading={loading}
               >
                 ভেরিফাই করুন
               </Button>
 
-              <button 
+              <button
                 type="button"
-                onClick={() => setStep('phone')}
+                onClick={handleChangePhone}
                 className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
               >
-                নম্বর পরিবর্তন করুন
+                ← নম্বর পরিবর্তন করুন
               </button>
             </form>
           )}
@@ -254,8 +268,8 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* reCAPTCHA container (invisible) */}
-      <div id="recaptcha-container" className="absolute bottom-0" />
+      {/* Invisible reCAPTCHA container */}
+      <div id="recaptcha-container" />
 
       {/* Footer */}
       <div className="py-4 text-center text-xs text-gray-400">

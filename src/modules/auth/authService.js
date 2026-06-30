@@ -8,13 +8,52 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
 
+// Setup reCAPTCHA verifier — singleton per container, clears old one first
+export const setupRecaptcha = (containerId) => {
+  // Clear existing verifier to avoid "already rendered" error
+  if (window._recaptchaVerifier) {
+    try {
+      window._recaptchaVerifier.clear();
+    } catch (_) {}
+    window._recaptchaVerifier = null;
+  }
+
+  window._recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+    size: 'invisible',
+    callback: () => {},
+    'expired-callback': () => {
+      // Auto-clear so next attempt gets a fresh verifier
+      window._recaptchaVerifier = null;
+    },
+  });
+
+  return window._recaptchaVerifier;
+};
+
 // Send OTP to phone number
 export const sendOTP = async (phoneNumber, recaptchaVerifier) => {
   try {
     const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
     return { success: true, confirmation };
   } catch (error) {
-    return { success: false, error: error.message };
+    // Clear bad verifier so next attempt starts fresh
+    if (window._recaptchaVerifier) {
+      try { window._recaptchaVerifier.clear(); } catch (_) {}
+      window._recaptchaVerifier = null;
+    }
+
+    let friendlyMessage = 'OTP পাঠাতে ব্যর্থ হয়েছে';
+    if (error.code === 'auth/unauthorized-domain') {
+      friendlyMessage = 'এই ডোমেইন Firebase-এ authorized নয়। Firebase Console → Authentication → Settings → Authorized domains-এ domain যোগ করুন।';
+    } else if (error.code === 'auth/invalid-phone-number') {
+      friendlyMessage = 'ফোন নম্বরটি সঠিক নয়। +880 সহ পূর্ণ নম্বর দিন।';
+    } else if (error.code === 'auth/too-many-requests') {
+      friendlyMessage = 'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+    } else if (error.code === 'auth/quota-exceeded') {
+      friendlyMessage = 'SMS কোটা শেষ হয়ে গেছে। পরে আবার চেষ্টা করুন।';
+    }
+
+    return { success: false, error: friendlyMessage, code: error.code };
   }
 };
 
@@ -23,13 +62,16 @@ export const verifyOTP = async (confirmationResult, code) => {
   try {
     const result = await confirmationResult.confirm(code);
     const user = result.user;
-
-    // Create user document if new user
     await createUserDocument(user);
-
     return { success: true, user };
   } catch (error) {
-    return { success: false, error: error.message };
+    let friendlyMessage = 'OTP ভুল বা মেয়াদ শেষ হয়ে গেছে';
+    if (error.code === 'auth/invalid-verification-code') {
+      friendlyMessage = 'OTP কোডটি ভুল। আবার চেক করুন।';
+    } else if (error.code === 'auth/code-expired') {
+      friendlyMessage = 'OTP-এর মেয়াদ শেষ। আবার OTP পাঠান।';
+    }
+    return { success: false, error: friendlyMessage, code: error.code };
   }
 };
 
@@ -52,7 +94,6 @@ export const getCurrentUser = (callback) => {
 export const updateUserProfile = async (user, data) => {
   try {
     await updateProfile(user, data);
-    // Update Firestore user doc too
     const userRef = doc(db, 'users', user.uid);
     await setDoc(userRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
     return { success: true };
@@ -95,17 +136,4 @@ export const getUserData = async (uid) => {
   } catch (error) {
     return { success: false, error: error.message };
   }
-};
-
-// Setup reCAPTCHA verifier
-export const setupRecaptcha = (containerId) => {
-  return new RecaptchaVerifier(auth, containerId, {
-    size: 'invisible',
-    callback: () => {
-      console.log('reCAPTCHA verified');
-    },
-    'expired-callback': () => {
-      console.log('reCAPTCHA expired');
-    }
-  });
 };
