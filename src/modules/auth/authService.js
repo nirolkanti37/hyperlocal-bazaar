@@ -70,7 +70,12 @@ export const verifyOTP = async (confirmationResult, code) => {
   try {
     const result = await confirmationResult.confirm(code);
     const user = result.user;
-    await createUserDocument(user);
+
+    // Save user doc to Firestore — non-blocking: failure doesn't break login
+    createUserDocument(user).catch(() => {
+      // Firestore might be offline or not set up yet — login still succeeds
+    });
+
     return { success: true, user };
   } catch (error) {
     let friendlyMessage = 'OTP ভুল বা মেয়াদ শেষ হয়ে গেছে';
