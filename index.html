@@ -26,13 +26,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>হাইপারলোকাল বাজার</title>
 
-    <!-- GitHub Pages SPA redirect fix -->
+    <!-- GitHub Pages SPA routing fix -->
     <script>
       (function(){
-        var redirect = sessionStorage.redirect;
-        delete sessionStorage.redirect;
-        if (redirect && redirect !== location.href) {
-          history.replaceState(null, null, redirect);
+        var redirect = sessionStorage.getItem('spa_redirect');
+        if (redirect) {
+          sessionStorage.removeItem('spa_redirect');
+          window.history.replaceState(null, null, redirect);
         }
       })();
     </script>
