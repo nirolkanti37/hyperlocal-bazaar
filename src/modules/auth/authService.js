@@ -44,16 +44,24 @@ export const sendOTP = async (phoneNumber, recaptchaVerifier) => {
 
     let friendlyMessage = 'OTP পাঠাতে ব্যর্থ হয়েছে';
     if (error.code === 'auth/unauthorized-domain') {
-      friendlyMessage = 'এই ডোমেইন Firebase-এ authorized নয়। Firebase Console → Authentication → Settings → Authorized domains-এ domain যোগ করুন।';
+      friendlyMessage = 'Unauthorized domain। Firebase Console → Authentication → Settings → Authorized domains-এ এই domain যোগ করুন।';
     } else if (error.code === 'auth/invalid-phone-number') {
       friendlyMessage = 'ফোন নম্বরটি সঠিক নয়। +880 সহ পূর্ণ নম্বর দিন।';
     } else if (error.code === 'auth/too-many-requests') {
       friendlyMessage = 'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।';
     } else if (error.code === 'auth/quota-exceeded') {
       friendlyMessage = 'SMS কোটা শেষ হয়ে গেছে। পরে আবার চেষ্টা করুন।';
+    } else if (error.code === 'auth/captcha-check-failed') {
+      friendlyMessage = 'reCAPTCHA যাচাই ব্যর্থ। পেজ reload করে আবার চেষ্টা করুন।';
+    } else if (error.code === 'auth/missing-phone-number') {
+      friendlyMessage = 'ফোন নম্বর missing।';
+    } else if (error.code === 'auth/network-request-failed') {
+      friendlyMessage = 'নেটওয়ার্ক সমস্যা। Internet connection চেক করুন।';
     }
 
-    return { success: false, error: friendlyMessage, code: error.code };
+    // Always include error code so user can report exact issue
+    const displayError = `${friendlyMessage} [${error.code || 'unknown'}]`;
+    return { success: false, error: displayError, code: error.code };
   }
 };
 
