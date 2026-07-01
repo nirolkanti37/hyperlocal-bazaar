@@ -18,7 +18,24 @@ const sanitizeErrorMessage = (message) => {
   // Remove any HTML tags and limit length
   return message
     .replace(/<[^>]*>/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
     .slice(0, 200);
+};
+
+// Utility function to get safe redirect path
+// Prevents open redirect vulnerabilities
+const getSafeRedirectPath = (pathname) => {
+  // List of allowed redirect paths
+  const allowedPaths = ['/', '/home', '/sell', '/product', '/search', '/chat', '/profile'];
+  
+  // Check if path is allowed
+  if (pathname && allowedPaths.some(path => pathname.startsWith(path))) {
+    return pathname;
+  }
+  
+  // Default to home if path is suspicious or not in whitelist
+  return '/';
 };
 
 const LoginPage = () => {
@@ -33,7 +50,8 @@ const LoginPage = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/';
+  // Get safe redirect path - prevents open redirect vulnerability
+  const from = getSafeRedirectPath(location.state?.from?.pathname);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -60,6 +78,7 @@ const LoginPage = () => {
     if (result.success) {
       toast.success('লগইন সফল! 🎉');
       setView('success');
+      // Use safe redirect path
       setTimeout(() => navigate(from, { replace: true }), 1200);
     } else {
       toast.error(sanitizeErrorMessage(result.error));
@@ -102,6 +121,7 @@ const LoginPage = () => {
     if (result.success) {
       toast.success('অ্যাকাউন্ট তৈরি হয়েছে! 🎉');
       setView('success');
+      // Use safe redirect path
       setTimeout(() => navigate(from, { replace: true }), 1200);
     } else {
       toast.error(sanitizeErrorMessage(result.error));
