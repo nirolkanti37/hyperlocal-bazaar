@@ -3,10 +3,58 @@ import {
   signOut, 
   onAuthStateChanged, 
   updateProfile,
-  RecaptchaVerifier
+  RecaptchaVerifier,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
+
+// ── Email / Password Auth ──────────────────────────────────────
+
+export const registerWithEmail = async (email, password, displayName) => {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(result.user, { displayName });
+    createUserDocument({ ...result.user, displayName }).catch(() => {});
+    return { success: true, user: result.user };
+  } catch (error) {
+    return { success: false, error: emailErrorMessage(error) };
+  }
+};
+
+export const loginWithEmail = async (email, password) => {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    return { success: true, user: result.user };
+  } catch (error) {
+    return { success: false, error: emailErrorMessage(error) };
+  }
+};
+
+export const resetPassword = async (email) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: emailErrorMessage(error) };
+  }
+};
+
+const emailErrorMessage = (error) => {
+  switch (error.code) {
+    case 'auth/email-already-in-use':  return 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট আছে। লগইন করুন।';
+    case 'auth/invalid-email':         return 'ইমেইল ঠিকানাটি সঠিক নয়।';
+    case 'auth/weak-password':         return 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।';
+    case 'auth/user-not-found':        return 'এই ইমেইলে কোনো অ্যাকাউন্ট নেই। নিবন্ধন করুন।';
+    case 'auth/wrong-password':        return 'পাসওয়ার্ড ভুল। আবার চেষ্টা করুন।';
+    case 'auth/invalid-credential':    return 'ইমেইল বা পাসওয়ার্ড ভুল।';
+    case 'auth/too-many-requests':     return 'অনেকবার ভুল হয়েছে। কিছুক্ষণ পর চেষ্টা করুন।';
+    case 'auth/network-request-failed':return 'নেটওয়ার্ক সমস্যা। Internet চেক করুন।';
+    default: return 'কিছু সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+  }
+};
 
 // Setup reCAPTCHA verifier — singleton per container, clears old one first
 export const setupRecaptcha = (containerId) => {
