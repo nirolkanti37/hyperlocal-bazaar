@@ -43,25 +43,25 @@ export const sendOTP = async (phoneNumber, recaptchaVerifier) => {
     }
 
     let friendlyMessage = 'OTP পাঠাতে ব্যর্থ হয়েছে';
-    if (error.code === 'auth/unauthorized-domain') {
-      friendlyMessage = 'Unauthorized domain। Firebase Console → Authentication → Settings → Authorized domains-এ এই domain যোগ করুন।';
+    const msg = error.message || '';
+
+    if (error.code === 'auth/billing-not-enabled' || msg.includes('BILLING_NOT_ENABLED')) {
+      friendlyMessage = 'SMS সেবা চালু নেই। Firebase Blaze Plan দরকার। অ্যাডমিনকে জানান।';
+    } else if (error.code === 'auth/unauthorized-domain') {
+      friendlyMessage = 'এই domain অনুমোদিত নয়।';
     } else if (error.code === 'auth/invalid-phone-number') {
-      friendlyMessage = 'ফোন নম্বরটি সঠিক নয়। +880 সহ পূর্ণ নম্বর দিন।';
+      friendlyMessage = 'ফোন নম্বরটি সঠিক নয়। ১১ ডিজিটের নম্বর দিন।';
     } else if (error.code === 'auth/too-many-requests') {
-      friendlyMessage = 'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+      friendlyMessage = 'অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।';
     } else if (error.code === 'auth/quota-exceeded') {
-      friendlyMessage = 'SMS কোটা শেষ হয়ে গেছে। পরে আবার চেষ্টা করুন।';
+      friendlyMessage = 'SMS কোটা শেষ। পরে আবার চেষ্টা করুন।';
     } else if (error.code === 'auth/captcha-check-failed') {
-      friendlyMessage = 'reCAPTCHA যাচাই ব্যর্থ। পেজ reload করে আবার চেষ্টা করুন।';
-    } else if (error.code === 'auth/missing-phone-number') {
-      friendlyMessage = 'ফোন নম্বর missing।';
+      friendlyMessage = 'reCAPTCHA ব্যর্থ। পেজ reload করে আবার চেষ্টা করুন।';
     } else if (error.code === 'auth/network-request-failed') {
-      friendlyMessage = 'নেটওয়ার্ক সমস্যা। Internet connection চেক করুন।';
+      friendlyMessage = 'নেটওয়ার্ক সমস্যা। Internet চেক করুন।';
     }
 
-    // Always include error code so user can report exact issue
-    const displayError = `${friendlyMessage} [${error.code || 'unknown'}]`;
-    return { success: false, error: displayError, code: error.code };
+    return { success: false, error: friendlyMessage, code: error.code };
   }
 };
 
