@@ -24,7 +24,9 @@ const sanitizeErrorMessage = (message) => {
 const LoginPage = () => {
   const [view, setView] = useState('login');
   const [loading, setLoading] = useState(false);
-  const [showPass, setShowPass] = useState(false);
+  // Separate password visibility states for each form
+  const [showPassLogin, setShowPassLogin] = useState(false);
+  const [showPassRegister, setShowPassRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -177,7 +179,7 @@ const LoginPage = () => {
                   />
                   <div className="relative">
                     <Input
-                      type={showPass ? 'text' : 'password'}
+                      type={showPassLogin ? 'text' : 'password'}
                       placeholder="পাসওয়ার্ড"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
@@ -186,11 +188,11 @@ const LoginPage = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPass(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      aria-label={showPass ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখান'}
+                      onClick={() => setShowPassLogin(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      aria-label={showPassLogin ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখান'}
                     >
-                      {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassLogin ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
@@ -238,7 +240,7 @@ const LoginPage = () => {
                   />
                   <div className="relative">
                     <Input
-                      type={showPass ? 'text' : 'password'}
+                      type={showPassRegister ? 'text' : 'password'}
                       placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
@@ -247,11 +249,11 @@ const LoginPage = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPass(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      aria-label={showPass ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখান'}
+                      onClick={() => setShowPassRegister(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      aria-label={showPassRegister ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখান'}
                     >
-                      {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassRegister ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
