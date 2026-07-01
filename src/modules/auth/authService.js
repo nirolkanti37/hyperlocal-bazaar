@@ -11,10 +11,20 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
 
+// ── Network Check ──────────────────────────────────────
+const isOnline = () => {
+  return navigator.onLine;
+};
+
 // ── Email / Password Auth ──────────────────────────────────────
 
 export const registerWithEmail = async (email, password, displayName) => {
   try {
+    // Check network connection
+    if (!isOnline()) {
+      return { success: false, error: 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।' };
+    }
+
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(result.user, { displayName });
     createUserDocument({ ...result.user, displayName }).catch(() => {});
@@ -26,6 +36,11 @@ export const registerWithEmail = async (email, password, displayName) => {
 
 export const loginWithEmail = async (email, password) => {
   try {
+    // Check network connection
+    if (!isOnline()) {
+      return { success: false, error: 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।' };
+    }
+
     const result = await signInWithEmailAndPassword(auth, email, password);
     return { success: true, user: result.user };
   } catch (error) {
@@ -35,6 +50,11 @@ export const loginWithEmail = async (email, password) => {
 
 export const resetPassword = async (email) => {
   try {
+    // Check network connection
+    if (!isOnline()) {
+      return { success: false, error: 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।' };
+    }
+
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (error) {
@@ -43,21 +63,40 @@ export const resetPassword = async (email) => {
 };
 
 const emailErrorMessage = (error) => {
+  // Handle network errors first
+  if (!isOnline()) {
+    return 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।';
+  }
+
   switch (error.code) {
-    case 'auth/email-already-in-use':  return 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট আছে। লগইন করুন।';
-    case 'auth/invalid-email':         return 'ইমেইল ঠিকানাটি সঠিক নয়।';
-    case 'auth/weak-password':         return 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।';
-    case 'auth/user-not-found':        return 'এই ইমেইলে কোনো অ্যাকাউন্ট নেই। নিবন্ধন করুন।';
-    case 'auth/wrong-password':        return 'পাসওয়ার্ড ভুল। আবার চেষ্টা করুন।';
-    case 'auth/invalid-credential':    return 'ইমেইল বা পাসওয়ার্ড ভুল।';
-    case 'auth/too-many-requests':     return 'অনেকবার ভুল হয়েছে। কিছুক্ষণ পর চেষ্টা করুন।';
-    case 'auth/network-request-failed':return 'নেটওয়ার্ক সমস্যা। Internet চেক করুন।';
-    default: return 'কিছু সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+    case 'auth/email-already-in-use':
+      return 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট আছে। লগইন করুন।';
+    case 'auth/invalid-email':
+      return 'ইমেইল ঠিকানাটি সঠিক নয়।';
+    case 'auth/weak-password':
+      return 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।';
+    case 'auth/user-not-found':
+      return 'এই ইমেইলে কোনো অ্যাকাউন্ট নেই। নিবন্ধন করুন।';
+    case 'auth/wrong-password':
+      return 'পাসওয়ার্ড ভুল। আবার চেষ্টা করুন।';
+    case 'auth/invalid-credential':
+      return 'ইমেইল বা পাসওয়ার্ড ভুল।';
+    case 'auth/too-many-requests':
+      return 'অনেকবার ভুল হয়েছে। কিছুক্ষণ পর চেষ্টা করুন।';
+    case 'auth/network-request-failed':
+      return 'নেটওয়ার্ক সমস্যা। ইন্টারনেট চেক করুন।';
+    default:
+      return 'কিছু সমস্যা হয়েছে। আবার চেষ্টা করুন।';
   }
 };
 
 // Setup reCAPTCHA verifier — singleton per container, clears old one first
 export const setupRecaptcha = (containerId) => {
+  // Only run in browser environment
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
   // Clear existing verifier to avoid "already rendered" error
   if (window._recaptchaVerifier) {
     try {
@@ -81,11 +120,16 @@ export const setupRecaptcha = (containerId) => {
 // Send OTP to phone number
 export const sendOTP = async (phoneNumber, recaptchaVerifier) => {
   try {
+    // Check network connection
+    if (!isOnline()) {
+      return { success: false, error: 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।', code: 'network-error' };
+    }
+
     const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
     return { success: true, confirmation };
   } catch (error) {
     // Clear bad verifier so next attempt starts fresh
-    if (window._recaptchaVerifier) {
+    if (typeof window !== 'undefined' && window._recaptchaVerifier) {
       try { window._recaptchaVerifier.clear(); } catch (_) {}
       window._recaptchaVerifier = null;
     }
@@ -93,7 +137,10 @@ export const sendOTP = async (phoneNumber, recaptchaVerifier) => {
     let friendlyMessage = 'OTP পাঠাতে ব্যর্থ হয়েছে';
     const msg = error.message || '';
 
-    if (error.code === 'auth/billing-not-enabled' || msg.includes('BILLING_NOT_ENABLED')) {
+    // Check network first
+    if (!isOnline()) {
+      friendlyMessage = 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।';
+    } else if (error.code === 'auth/billing-not-enabled' || msg.includes('BILLING_NOT_ENABLED')) {
       friendlyMessage = 'SMS সেবা চালু নেই। Firebase Blaze Plan দরকার। অ্যাডমিনকে জানান।';
     } else if (error.code === 'auth/unauthorized-domain') {
       friendlyMessage = 'এই domain অনুমোদিত নয়।';
@@ -106,7 +153,7 @@ export const sendOTP = async (phoneNumber, recaptchaVerifier) => {
     } else if (error.code === 'auth/captcha-check-failed') {
       friendlyMessage = 'reCAPTCHA ব্যর্থ। পেজ reload করে আবার চেষ্টা করুন।';
     } else if (error.code === 'auth/network-request-failed') {
-      friendlyMessage = 'নেটওয়ার্ক সমস্যা। Internet চেক করুন।';
+      friendlyMessage = 'নেটওয়ার্ক সমস্যা। ইন্টারনেট চেক করুন।';
     }
 
     return { success: false, error: friendlyMessage, code: error.code };
@@ -116,6 +163,11 @@ export const sendOTP = async (phoneNumber, recaptchaVerifier) => {
 // Verify OTP code
 export const verifyOTP = async (confirmationResult, code) => {
   try {
+    // Check network connection
+    if (!isOnline()) {
+      return { success: false, error: 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।' };
+    }
+
     const result = await confirmationResult.confirm(code);
     const user = result.user;
 
@@ -127,11 +179,15 @@ export const verifyOTP = async (confirmationResult, code) => {
     return { success: true, user };
   } catch (error) {
     let friendlyMessage = 'OTP ভুল বা মেয়াদ শেষ হয়ে গেছে';
-    if (error.code === 'auth/invalid-verification-code') {
+    
+    if (!isOnline()) {
+      friendlyMessage = 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।';
+    } else if (error.code === 'auth/invalid-verification-code') {
       friendlyMessage = 'OTP কোডটি ভুল। আবার চেক করুন।';
     } else if (error.code === 'auth/code-expired') {
       friendlyMessage = 'OTP-এর মেয়াদ শেষ। আবার OTP পাঠান।';
     }
+    
     return { success: false, error: friendlyMessage, code: error.code };
   }
 };
@@ -154,6 +210,11 @@ export const getCurrentUser = (callback) => {
 // Update user profile
 export const updateUserProfile = async (user, data) => {
   try {
+    // Check network connection
+    if (!isOnline()) {
+      return { success: false, error: 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।' };
+    }
+
     await updateProfile(user, data);
     const userRef = doc(db, 'users', user.uid);
     await setDoc(userRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
@@ -180,6 +241,7 @@ export const createUserDocument = async (user) => {
       rating: 0,
       reviewCount: 0,
       isSeller: false,
+      isAdmin: false,
       fcmToken: null,
     });
   }
@@ -188,6 +250,11 @@ export const createUserDocument = async (user) => {
 // Get user data from Firestore
 export const getUserData = async (uid) => {
   try {
+    // Check network connection
+    if (!isOnline()) {
+      return { success: false, error: 'নেটওয়ার্ক সংযোগ নেই। ইন্টারনেট চেক করুন।' };
+    }
+
     const userRef = doc(db, 'users', uid);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
