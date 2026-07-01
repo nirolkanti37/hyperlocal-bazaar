@@ -24,10 +24,13 @@ service cloud.firestore {
     // Products collection
     match /products/{productId} {
       allow read: if true; // Anyone can view products
-      allow create: if isAuth();
+      // Create: Only authenticated users can create, must include sellerId matching their UID
+      allow create: if isAuth() && request.resource.data.sellerId == request.auth.uid;
+      // Update: Only seller can update their own products
       allow update: if isAuth() && (
         resource.data.sellerId == request.auth.uid
       );
+      // Delete: Only seller can delete their own products
       allow delete: if isAuth() && resource.data.sellerId == request.auth.uid;
     }
 
@@ -50,7 +53,7 @@ service cloud.firestore {
     // Reviews
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isAuth();
+      allow create: if isAuth() && request.resource.data.reviewerId == request.auth.uid;
       allow update: if isAuth() && resource.data.reviewerId == request.auth.uid;
       allow delete: if false;
     }
